@@ -121,6 +121,7 @@ def check_session_middleware_installed(app_configs=None, **kwargs):
 def check_middleware_installed(app_configs=None, **kwargs):
     "Ensure that _our_ middleware is installed."
     from django.conf import settings
+    from django.utils.module_loading import import_string
 
     if getattr(settings, 'MIDDLEWARE', None):
         MIDDLEWARE_CLASSES = settings.MIDDLEWARE
@@ -129,7 +130,20 @@ def check_middleware_installed(app_configs=None, **kwargs):
 
     errors = []
 
-    if MIDDLEWARE not in MIDDLEWARE_CLASSES:
+    CUSTOM_MIDDLEWARE = getattr(settings, 'BOARDINGHOUSE_MIDDLEWARE')
+    if CUSTOM_MIDDLEWARE:
+        CustomMiddleware = import_string(CUSTOM_MIDDLEWARE)
+        Middleware = import_string(MIDDLEWARE)
+        if not issubclass(CustomMiddleware, Middleware):
+            errors.append(Error(
+                'Missing required middleware',
+                hint="'{0}' not a subclass of '{1}'".format(
+                    CUSTOM_MIDDLEWARE,
+                    MIDDLEWARE
+                ),
+                id='boardinghouse.E003'
+            ))
+    elif MIDDLEWARE not in MIDDLEWARE_CLASSES:
         errors.append(Error(
             'Missing required middleware',
             hint="Add '{0}' to settings.MIDDLEWARE_CLASSES".format(MIDDLEWARE),
